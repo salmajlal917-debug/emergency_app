@@ -19,6 +19,7 @@ dependencies:
   pin_code_fields: ^7.4.0
   # Firebase dependencies
   firebase_core: ^2.32.0
+  firebase_auth: ^4.16.0
   cloud_firestore: ^4.15.0
   shared_preferences: ^2.2.2
   provider: ^6.1.1

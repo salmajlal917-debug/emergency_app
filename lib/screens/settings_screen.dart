@@ -17,7 +17,7 @@ class SettingsScreen extends StatelessWidget {
   
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => PhoneSignInScreen()),
+      MaterialPageRoute(builder: (context) => const PhoneSignInScreen()),
       (route) => false,
     );
   }

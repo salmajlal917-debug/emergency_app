@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
   static const String _phoneKey = 'user_phone';
   
   // Save phone locally
@@ -20,7 +22,24 @@ class UserService {
   static Future<String?> getCurrentUserPhone() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_phoneKey);
+      final localPhone = prefs.getString(_phoneKey);
+      if (localPhone != null && localPhone.isNotEmpty) {
+        return localPhone;
+      }
+
+      final authEmail = _auth.currentUser?.email;
+      if (authEmail != null &&
+          authEmail.startsWith('u') &&
+          authEmail.endsWith('@phone.emergencyapp.local')) {
+        final digits = authEmail
+            .replaceFirst('u', '')
+            .replaceFirst('@phone.emergencyapp.local', '');
+        if (digits.isNotEmpty) {
+          return '+$digits';
+        }
+      }
+
+      return null;
     } catch (e) {
       print('❌ Error getting phone: $e');
       return null;
@@ -30,6 +49,7 @@ class UserService {
   // Logout
   static Future<void> logout() async {
     try {
+      await _auth.signOut();
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_phoneKey);
       print('✅ User logged out');

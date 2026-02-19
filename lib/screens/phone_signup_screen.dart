@@ -3,23 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:projec/screens/home_screen.dart';
-import 'package:projec/screens/phone_signup_screen.dart';
 import 'package:projec/services/auth_service.dart';
 
-class PhoneSignInScreen extends StatefulWidget {
-  const PhoneSignInScreen({super.key});
+class PhoneSignUpScreen extends StatefulWidget {
+  const PhoneSignUpScreen({super.key});
 
   @override
-  State<PhoneSignInScreen> createState() => _PhoneSignInScreenState();
+  State<PhoneSignUpScreen> createState() => _PhoneSignUpScreenState();
 }
 
-class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
+class _PhoneSignUpScreenState extends State<PhoneSignUpScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String _selectedCountryCode = '+1';
 
   final List<Map<String, String>> _countries = const [
@@ -33,7 +35,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
     {'code': '+966', 'flag': '🇸🇦', 'name': 'Saudi Arabia'},
   ];
 
-  Future<void> _signIn() async {
+  Future<void> _createAccount() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -44,7 +46,8 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
     try {
       final fullPhone = '$_selectedCountryCode${_phoneController.text.trim()}';
 
-      await AuthService.signInWithPhoneAndPassword(
+      await AuthService.signUpWithPhoneAndPassword(
+        fullName: _fullNameController.text.trim(),
         phone: fullPhone,
         password: _passwordController.text.trim(),
       );
@@ -61,7 +64,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
     } on FirebaseAuthException catch (error) {
       _showMessage(AuthService.mapFirebaseAuthError(error), isError: true);
     } catch (_) {
-      _showMessage('Sign in failed. Please try again.', isError: true);
+      _showMessage('Account creation failed. Please try again.', isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -103,10 +106,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      code,
-                      style: TextStyle(color: Colors.grey[300]),
-                    ),
+                    Text(code, style: TextStyle(color: Colors.grey[300])),
                     if (isSelected) ...[
                       const SizedBox(width: 8),
                       const Icon(Icons.check_rounded, color: Colors.green),
@@ -148,11 +148,11 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
         child: Stack(
           children: [
             Positioned(
-              top: -120,
-              right: -40,
+              top: -90,
+              right: -20,
               child: Container(
-                width: 260,
-                height: 260,
+                width: 220,
+                height: 220,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.red.withOpacity(0.12),
@@ -160,11 +160,11 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
               ),
             ),
             Positioned(
-              bottom: -90,
-              left: -30,
+              bottom: -80,
+              left: -20,
               child: Container(
-                width: 210,
-                height: 210,
+                width: 180,
+                height: 180,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.blue.withOpacity(0.08),
@@ -174,109 +174,44 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
             SafeArea(
               child: SingleChildScrollView(
                 padding: EdgeInsets.all(isSmallScreen ? 16 : 22),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight:
-                        size.height - MediaQuery.of(context).padding.vertical,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildBrand(),
-                        const SizedBox(height: 36),
-                        Text(
-                          'Sign In',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isSmallScreen ? 30 : 34,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.6,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Use your phone number and password to access your emergency dashboard.',
-                          style: TextStyle(
-                            color: Colors.blueGrey[100],
-                            fontSize: isSmallScreen ? 13 : 14,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        _buildFormCard(isSmallScreen),
-                        const Spacer(),
-                        const SizedBox(height: 16),
-                        Center(
-                          child: TextButton(
-                            onPressed: _isLoading
-                                ? null
-                                : () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const PhoneSignUpScreen(),
-                                      ),
-                                    );
-                                  },
-                            child: const Text(
-                              'Need an account? Create one',
-                              style: TextStyle(
-                                color: Color(0xFFD1D5DB),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create Account',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isSmallScreen ? 30 : 34,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Set up your emergency profile with your full name, phone and password.',
+                      style: TextStyle(
+                        color: Colors.blueGrey[100],
+                        fontSize: isSmallScreen ? 13 : 14,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildFormCard(isSmallScreen),
+                  ],
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildBrand() {
-    return Row(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
-            ),
-          ),
-          child: const Icon(Icons.health_and_safety_rounded, color: Colors.white),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'SafeGuard',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              'Emergency Network',
-              style: TextStyle(
-                color: Color(0xFF9CA3AF),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -293,14 +228,21 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Phone Number',
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontWeight: FontWeight.w600,
-              ),
+            TextFormField(
+              controller: _fullNameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: _fieldDecoration('Full name'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Full name is required';
+                }
+                if (value.trim().length < 3) {
+                  return 'Please enter your full name';
+                }
+                return null;
+              },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             Row(
               children: [
                 InkWell(
@@ -320,7 +262,8 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                       children: [
                         Text(
                           _countries.firstWhere(
-                            (country) => country['code'] == _selectedCountryCode,
+                            (country) =>
+                                country['code'] == _selectedCountryCode,
                           )['flag']!,
                           style: const TextStyle(fontSize: 18),
                         ),
@@ -351,7 +294,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                       LengthLimitingTextInputFormatter(15),
                     ],
                     style: const TextStyle(color: Colors.white),
-                    decoration: _fieldDecoration('Enter phone number'),
+                    decoration: _fieldDecoration('Phone number'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Phone number is required';
@@ -365,20 +308,12 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            Text(
-              'Password',
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
               style: const TextStyle(color: Colors.white),
-              decoration: _fieldDecoration('Enter password').copyWith(
+              decoration: _fieldDecoration('Password').copyWith(
                 suffixIcon: IconButton(
                   onPressed: () {
                     setState(() => _obscurePassword = !_obscurePassword);
@@ -396,17 +331,47 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                   return 'Password is required';
                 }
                 if (value.trim().length < 6) {
-                  return 'Password must be at least 6 characters';
+                  return 'Use at least 6 characters';
                 }
                 return null;
               },
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirmPassword,
+              style: const TextStyle(color: Colors.white),
+              decoration: _fieldDecoration('Confirm password').copyWith(
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    );
+                  },
+                  icon: Icon(
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: Colors.grey[400],
+                  ),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please confirm your password';
+                }
+                if (value.trim() != _passwordController.text.trim()) {
+                  return 'Passwords do not match';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _signIn,
+                onPressed: _isLoading ? null : _createAccount,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFDC2626),
                   foregroundColor: Colors.white,
@@ -420,11 +385,13 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : const Text(
-                        'Sign In',
+                        'Create Account',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -466,8 +433,10 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
 
   @override
   void dispose() {
+    _fullNameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 }

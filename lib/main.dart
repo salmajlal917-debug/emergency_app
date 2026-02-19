@@ -5,17 +5,9 @@ import 'package:projec/screens/phone_signin_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase with YOUR credentials
+  // Initialize Firebase from platform config (google-services.json on Android)
   try {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyBwnU3m0EZ-l6BnB7JvzY9-YcDuPFY_TGM",
-        appId: "1:632363845938:android:21b5a8541073b8c8cf6f2b", 
-        messagingSenderId: "632363845938",
-        projectId: "emergencyappsj",
-        storageBucket: "emergencyappsj.firebasestorage.app",
-      ),
-    );
+    await Firebase.initializeApp();
     print('🎉 Firebase connected successfully!');
   } catch (e) {
     print('⚠️ Note: Firebase connection issue - $e');
@@ -38,7 +30,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Inter',
         scaffoldBackgroundColor: const Color.fromARGB(255, 14, 14, 14),
       ),
-      home: PhoneSignInScreen(),
+      home: const PhoneSignInScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
