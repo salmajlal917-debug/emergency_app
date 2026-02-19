@@ -34,7 +34,7 @@ class AuthService {
     );
 
     await UserService.saveUserPhone(normalizedPhone);
-    await _ensureUserDocument(normalizedPhone);
+    await _safeEnsureUserDocument(normalizedPhone);
   }
 
   static Future<void> signUpWithPhoneAndPassword({
@@ -54,16 +54,32 @@ class AuthService {
       await credential.user!.updateDisplayName(fullName.trim());
     }
 
-    await _firestore.collection('users').doc(normalizedPhone).set({
-      'name': fullName.trim(),
-      'phone': normalizedPhone,
-      'email': authEmail,
-      'authUid': credential.user?.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await _firestore.collection('users').doc(normalizedPhone).set({
+        'name': fullName.trim(),
+        'phone': normalizedPhone,
+        'email': authEmail,
+        'authUid': credential.user?.uid,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (error) {
+      if (!_isFirestoreUnavailable(error)) {
+        rethrow;
+      }
+    }
 
     await UserService.saveUserPhone(normalizedPhone);
+  }
+
+  static Future<void> _safeEnsureUserDocument(String normalizedPhone) async {
+    try {
+      await _ensureUserDocument(normalizedPhone);
+    } on FirebaseException catch (error) {
+      if (!_isFirestoreUnavailable(error)) {
+        rethrow;
+      }
+    }
   }
 
   static Future<void> _ensureUserDocument(String normalizedPhone) async {
@@ -82,6 +98,17 @@ class AuthService {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  static bool _isFirestoreUnavailable(FirebaseException error) {
+    final message = (error.message ?? '').toLowerCase();
+    return error.code == 'failed-precondition' ||
+        error.code == 'unavailable' ||
+        error.code == 'permission-denied' ||
+        message.contains('cloud firestore api has not been used') ||
+        message.contains('firestore api is not available') ||
+        message.contains('database does not exist') ||
+        message.contains('permission denied');
   }
 
   static String mapFirebaseAuthError(FirebaseAuthException error) {
