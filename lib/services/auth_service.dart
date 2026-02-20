@@ -193,6 +193,7 @@ class AuthService {
         // Continue anyway, the important data will be saved to Firestore
       }
 
+    
       // Save to Firestore with password
       await _firestore.collection('users').doc(normalizedPhone).set({
         'name': fullName.trim(),
@@ -211,6 +212,32 @@ class AuthService {
     } catch (e) {
       print('❌ Sign up error: $e');
       onError('Failed to create account. Please try again.');
+    }
+  }
+
+  static String mapFirebaseAuthError(FirebaseAuthException error) {
+    final message = error.message ?? '';
+    if (message.contains('CONFIGURATION_NOT_FOUND')) {
+      return 'Firebase Auth is not fully configured. Enable Email/Password in Firebase Console > Authentication > Sign-in method.';
+    }
+
+    switch (error.code) {
+      case 'invalid-credential':
+      case 'wrong-password':
+      case 'user-not-found':
+        return 'Invalid phone number or password.';
+      case 'operation-not-allowed':
+        return 'Email/Password sign-in is disabled in Firebase Console.';
+      case 'email-already-in-use':
+        return 'This phone number is already registered.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'network-request-failed':
+        return 'No internet connection. Try again.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      default:
+        return error.message ?? 'Authentication failed. Please try again.';
     }
   }
 
