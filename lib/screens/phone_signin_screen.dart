@@ -43,7 +43,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
   setState(() => _isLoading = true);
 
   try {
-    // Remove leading zero from phone number for proper formatting
+    
     String phoneInput = _phoneController.text.trim();
     if (phoneInput.startsWith('0')) {
       phoneInput = phoneInput.substring(1);

@@ -1,5 +1,3 @@
-// ignore_for_file: unused_field
-
 import 'package:flutter/material.dart';
 
 class AutoSendLocationScreen extends StatefulWidget {
@@ -17,8 +15,8 @@ class _AutoSendLocationScreenState extends State<AutoSendLocationScreen> {
   bool _includeAddress = true;
   bool _includeBatteryLevel = true;
 
-  int _updateInterval = 5; // minutes
-  int _duration = 60; // minutes
+  int _updateInterval = 5; 
+  int _duration = 60; 
 
   final List<String> _triggerEvents = [
     'SOS Activation',
@@ -66,39 +64,39 @@ class _AutoSendLocationScreenState extends State<AutoSendLocationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Status Card
+          
               _buildStatusCard(),
 
               const SizedBox(height: 32),
 
-              // Main Toggle
+              
               _buildMainToggle(),
 
               if (_isEnabled) ...[
                 const SizedBox(height: 32),
 
-                // Trigger Events
+                
                 _buildTriggerEventsSection(),
 
                 const SizedBox(height: 32),
 
-                // Location Settings
+              
                 _buildLocationSettings(),
 
                 const SizedBox(height: 32),
 
-                // Advanced Settings
+                
                 _buildAdvancedSettings(),
 
                 const SizedBox(height: 32),
 
-                // Preview Card
+                
                 _buildPreviewCard(),
               ],
 
               const SizedBox(height: 32),
 
-              // Save Button
+            
               _buildSaveButton(),
             ],
           ),
