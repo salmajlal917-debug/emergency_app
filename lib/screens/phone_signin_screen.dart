@@ -34,7 +34,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
     {'code': '+966', 'flag': '🇸🇦', 'name': 'Saudi Arabia'},
   ];
 
-  Future<void> _signIn() async {
+ Future<void> _signIn() async {
   if (!_formKey.currentState!.validate()) {
     return;
   }
@@ -43,7 +43,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
   setState(() => _isLoading = true);
 
   try {
-    
+    // Format phone number
     String phoneInput = _phoneController.text.trim();
     if (phoneInput.startsWith('0')) {
       phoneInput = phoneInput.substring(1);
@@ -51,20 +51,34 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
     final fullPhone = '$_selectedCountryCode$phoneInput';
     final password = _passwordController.text.trim();
 
-    AuthService.sendOTP(
+    // Check if user exists in Firestore
+    final userExists = await AuthService.checkIfUserExists(fullPhone);
+    
+    if (!userExists) {
+      setState(() => _isLoading = false);
+      _showMessage('Account not found. Please sign up first.', isError: true);
+      return;
+    }
+
+    // Verify password
+    final passwordCorrect = await AuthService.verifyPassword(fullPhone, password);
+    
+    if (!passwordCorrect) {
+      setState(() => _isLoading = false);
+      _showMessage('Incorrect password', isError: true);
+      return;
+    }
+
+    // Password correct - sign in directly without OTP
+    await AuthService.signInWithoutOTP(
       phone: fullPhone,
-      onCodeSent: (verificationId) {
+      password: password,
+      onSuccess: () {
         setState(() => _isLoading = false);
-        Navigator.push(
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (_) => VerifyCodeScreen(
-              phoneNumber: fullPhone,
-              verificationId: verificationId,
-              isSignUp: false,
-              password: password,
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
         );
       },
       onError: (error) {
@@ -72,6 +86,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
         _showMessage(error, isError: true);
       },
     );
+
   } catch (e) {
     setState(() => _isLoading = false);
     _showMessage('Sign in failed. Please try again.', isError: true);

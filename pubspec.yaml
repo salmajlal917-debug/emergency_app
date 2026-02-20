@@ -18,7 +18,7 @@ dependencies:
   vibration: ^3.1.4
   pin_code_fields: ^7.4.0
   # Firebase dependencies
-  firebase_core: ^2.32.0
+  firebase_core: ^2.24.2
   firebase_auth: ^4.16.0
   cloud_firestore: ^4.15.0
   shared_preferences: ^2.2.2

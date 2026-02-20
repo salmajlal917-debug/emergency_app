@@ -46,7 +46,7 @@ class _PhoneSignUpScreenState extends State<PhoneSignUpScreen> {
   setState(() => _isLoading = true);
 
   try {
-    // Remove leading zero from phone number for proper formatting
+    // Format phone number
     String phoneInput = _phoneController.text.trim();
     if (phoneInput.startsWith('0')) {
       phoneInput = phoneInput.substring(1);
@@ -55,9 +55,21 @@ class _PhoneSignUpScreenState extends State<PhoneSignUpScreen> {
     final password = _passwordController.text.trim();
     final fullName = _fullNameController.text.trim();
 
+    // Check if user already exists
+    final userExists = await AuthService.checkIfUserExists(fullPhone);
+    
+    if (userExists) {
+      setState(() => _isLoading = false);
+      _showMessage('This phone number is already registered.', isError: true);
+      return;
+    }
+
+    // Save name temporarily
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('temp_full_name', fullName);
+    await prefs.setString('temp_password', password);
 
+    // Send OTP for verification
     AuthService.sendOTP(
       phone: fullPhone,
       onCodeSent: (verificationId) {
