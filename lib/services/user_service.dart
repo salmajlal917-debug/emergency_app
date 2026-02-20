@@ -21,21 +21,20 @@ class UserService {
   // Get phone
   static Future<String?> getCurrentUserPhone() async {
     try {
+      // Try local storage first
       final prefs = await SharedPreferences.getInstance();
       final localPhone = prefs.getString(_phoneKey);
       if (localPhone != null && localPhone.isNotEmpty) {
         return localPhone;
       }
 
-      final authEmail = _auth.currentUser?.email;
-      if (authEmail != null &&
-          authEmail.startsWith('u') &&
-          authEmail.endsWith('@phone.emergencyapp.local')) {
-        final digits = authEmail
-            .replaceFirst('u', '')
-            .replaceFirst('@phone.emergencyapp.local', '');
-        if (digits.isNotEmpty) {
-          return '+$digits';
+      // Try to get from Firebase Auth
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        final phoneNumber = currentUser.phoneNumber;
+        if (phoneNumber != null && phoneNumber.isNotEmpty) {
+          await saveUserPhone(phoneNumber);
+          return phoneNumber;
         }
       }
 
@@ -44,6 +43,11 @@ class UserService {
       print('❌ Error getting phone: $e');
       return null;
     }
+  }
+  
+  // Get current user from Firebase Auth
+  static User? getCurrentUser() {
+    return _auth.currentUser;
   }
   
   // Logout
@@ -69,18 +73,17 @@ class UserService {
     DateTime? dateOfBirth,
   }) async {
     try {
-      // Clean phone for document ID (remove spaces, keep + and numbers)
-      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), ''); // Just remove spaces
+      // Clean phone for document ID
+      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
       
       final userData = {
-        'phone': phone,
         'name': name,
+        'phone': phone,
         'email': email,
         'bloodType': bloodType,
         'gender': gender,
         'emergencyNotes': emergencyNotes ?? '',
         'updatedAt': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
       };
       
       if (dateOfBirth != null) {
@@ -102,7 +105,7 @@ class UserService {
   // Get profile from Firestore
   static Future<Map<String, dynamic>?> getUserProfile(String phone) async {
     try {
-      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), ''); // Just remove spaces
+      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
       
       final doc = await _firestore
           .collection('users')
@@ -113,11 +116,17 @@ class UserService {
         print('✅ Profile found in Firestore for: $phone');
         return doc.data();
       }
-      print('ℹ️ No profile found in Firestore for: $phone');
+      
+      print('ℹ️ No profile found for: $phone');
       return null;
     } catch (e) {
       print('❌ Error getting profile from Firestore: $e');
       return null;
     }
+  }
+  
+  // Check if user is logged in
+  static Future<bool> isLoggedIn() async {
+    return _auth.currentUser != null;
   }
 }

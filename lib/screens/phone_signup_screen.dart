@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:projec/screens/home_screen.dart';
+import 'package:projec/screens/verify_code_screen.dart';
 import 'package:projec/services/auth_service.dart';
 
 class PhoneSignUpScreen extends StatefulWidget {
@@ -36,41 +38,52 @@ class _PhoneSignUpScreenState extends State<PhoneSignUpScreen> {
   ];
 
   Future<void> _createAccount() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    FocusScope.of(context).unfocus();
-    setState(() => _isLoading = true);
-
-    try {
-      final fullPhone = '$_selectedCountryCode${_phoneController.text.trim()}';
-
-      await AuthService.signUpWithPhoneAndPassword(
-        fullName: _fullNameController.text.trim(),
-        phone: fullPhone,
-        password: _passwordController.text.trim(),
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-        (route) => false,
-      );
-    } on FirebaseAuthException catch (error) {
-      _showMessage(AuthService.mapFirebaseAuthError(error), isError: true);
-    } catch (_) {
-      _showMessage('Account creation failed. Please try again.', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+  if (!_formKey.currentState!.validate()) {
+    return;
   }
+
+  FocusScope.of(context).unfocus();
+  setState(() => _isLoading = true);
+
+  try {
+    // Remove leading zero from phone number for proper formatting
+    String phoneInput = _phoneController.text.trim();
+    if (phoneInput.startsWith('0')) {
+      phoneInput = phoneInput.substring(1);
+    }
+    final fullPhone = '$_selectedCountryCode$phoneInput';
+    final password = _passwordController.text.trim();
+    final fullName = _fullNameController.text.trim();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('temp_full_name', fullName);
+
+    AuthService.sendOTP(
+      phone: fullPhone,
+      onCodeSent: (verificationId) {
+        setState(() => _isLoading = false);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerifyCodeScreen(
+              phoneNumber: fullPhone,
+              verificationId: verificationId,
+              isSignUp: true,
+              password: password,
+            ),
+          ),
+        );
+      },
+      onError: (error) {
+        setState(() => _isLoading = false);
+        _showMessage(error, isError: true);
+      },
+    );
+  } catch (_) {
+    setState(() => _isLoading = false);
+    _showMessage('Account creation failed. Please try again.', isError: true);
+  }
+}
 
   void _openCountryPicker() {
     showModalBottomSheet(

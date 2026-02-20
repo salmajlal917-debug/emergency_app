@@ -1,16 +1,20 @@
+import 'package:shared_preferences/shared_preferences.dart'; 
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'package:projec/services/otp_service.dart';
-
+import 'package:projec/services/auth_service.dart';
+import 'package:projec/screens/home_screen.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
   final String phoneNumber;
-  final String generatedOtp; // The OTP that was generated
+  final String verificationId;
+  final bool isSignUp; // true for sign up, false for sign in
+  final String password;
 
   const VerifyCodeScreen({
-    Key? key, 
+    Key? key,
     required this.phoneNumber,
-    required this.generatedOtp,
+    required this.verificationId,
+    required this.isSignUp,
+    required this.password,
   }) : super(key: key);
 
   @override
@@ -24,7 +28,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   );
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   bool _isLoading = false;
-  int _countdown = 30;
+  int _countdown = 60; // Changed to 60 seconds for real OTP
   bool _canResend = false;
   String? _currentEnteredOtp;
 
@@ -33,7 +37,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     super.initState();
     _startCountdown();
     _setupFocusNodes();
-    print('Expected OTP for ${widget.phoneNumber}: ${widget.generatedOtp}'); // Debug
   }
 
   void _setupFocusNodes() {
@@ -86,41 +89,77 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     });
   }
 
-  void _verifyCode() {
+  void _verifyCode() async {
     if (!_isAllFieldsFilled()) return;
     
+    setState(() => _isLoading = true);
+    
     final enteredOtp = _getEnteredOtp();
-    
-    // Verify using static method from OtpService
-    final isCorrect = OtpService.verifyOtp(widget.phoneNumber, enteredOtp);
-    
-    if (!isCorrect && widget.generatedOtp != enteredOtp) {
-      // OTP is incorrect
-      _showErrorSnackbar();
-      return;
+
+    if (widget.isSignUp) {
+  // Get the full name from shared preferences
+  final prefs = await SharedPreferences.getInstance();
+  final fullName = prefs.getString('temp_full_name') ?? '';
+  
+  // SIGN UP FLOW
+  await AuthService.verifyOTPAndSignIn(
+    verificationId: widget.verificationId,
+    smsCode: enteredOtp,
+    phone: widget.phoneNumber,
+    password: widget.password,
+    onSuccess: () {
+      // Now create the account in Firestore
+      AuthService.signUpWithPhone(
+        fullName: fullName,
+        phone: widget.phoneNumber,
+        password: widget.password,
+        onSuccess: () {
+          // Clear temp data
+          prefs.remove('temp_full_name');
+          _showSuccessAndNavigate();
+        },
+        onError: (error) {
+          setState(() => _isLoading = false);
+          _showErrorSnackbar(error);
+        },
+      );
+    },
+    onError: (error) {
+      setState(() => _isLoading = false);
+      _showErrorSnackbar(error);
+    },
+  );
+} else {
+      // SIGN IN FLOW
+      await AuthService.verifyOTPAndSignIn(
+        verificationId: widget.verificationId,
+        smsCode: enteredOtp,
+        phone: widget.phoneNumber,
+        password: widget.password,
+        onSuccess: () {
+          _showSuccessAndNavigate();
+        },
+        onError: (error) {
+          setState(() => _isLoading = false);
+          _showErrorSnackbar(error);
+        },
+      );
     }
+  }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    Future.delayed(Duration(seconds: 1), () {
-      setState(() {
-        _isLoading = false;
-      });
-
-      _showSuccessSnackbar();
-      
-      Future.delayed(Duration(milliseconds: 1500), () {
-        if (mounted) {
-          // Mark user as logged in (you can use shared preferences or provider later)
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => HomeScreen()),
-            (route) => false,
-          );
-        }
-      });
+  void _showSuccessAndNavigate() {
+    if (!mounted) return;
+    
+    _showSuccessSnackbar();
+    
+    Future.delayed(Duration(milliseconds: 1500), () {
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+          (route) => false,
+        );
+      }
     });
   }
 
@@ -144,26 +183,25 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     );
   }
 
-  void _showErrorSnackbar() {
+  void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(Icons.error_rounded, color: Colors.white, size: 20),
             SizedBox(width: 8),
-            Text('Invalid OTP. Please try again.'),
+            Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: Colors.orange,
+        backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        duration: Duration(seconds: 2),
+        duration: Duration(seconds: 3),
       ),
     );
     
-    // Clear fields after showing error
     _clearAllFields();
   }
 
@@ -171,26 +209,37 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     if (_canResend) {
       setState(() {
         _canResend = false;
-        _countdown = 30;
+        _countdown = 60;
         _clearAllFields();
+        _isLoading = true;
       });
-      _startCountdown();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.send_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('New OTP: ${widget.generatedOtp}'), // Show the OTP
-            ],
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+      AuthService.resendOTP(
+        phone: widget.phoneNumber,
+        onCodeSent: (newVerificationId) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('OTP resent successfully'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          _startCountdown();
+        },
+        onError: (error) {
+          setState(() => _isLoading = false);
+          _showErrorSnackbar(error);
+        },
       );
     }
   }
@@ -282,16 +331,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                           ],
                         ),
                       ),
-                      SizedBox(height: 8),
-                      // Debug hint for testing
-                      Text(
-                        'Test OTP: ${widget.generatedOtp}',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
                     ],
                   ),
                   SizedBox(height: isSmallScreen ? 40 : 60),
@@ -356,19 +395,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   ),
                   SizedBox(height: isSmallScreen ? 20 : 24),
 
-                  // Show entered OTP for debugging
-                  if (_currentEnteredOtp != null)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Entered: $_currentEnteredOtp',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-
                   // Auto verification notice
                   AnimatedContainer(
                     duration: Duration(milliseconds: 300),
@@ -401,7 +427,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                             ),
                             SizedBox(width: isSmallScreen ? 6 : 8),
                             Text(
-                              'Auto-verifying...',
+                              'Verifying...',
                               style: TextStyle(
                                 color: Colors.red,
                                 fontSize: isSmallScreen ? 12 : 13,
@@ -476,7 +502,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       ),
                       SizedBox(height: isSmallScreen ? 10 : 12),
                       GestureDetector(
-                        onTap: _canResend ? _resendCode : null,
+                        onTap: _canResend && !_isLoading ? _resendCode : null,
                         child: AnimatedContainer(
                           duration: Duration(milliseconds: 200),
                           padding: EdgeInsets.symmetric(
@@ -525,8 +551,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   ),
 
                   Spacer(),
-
-                  // Removed Account Security section
                   SizedBox(height: isSmallScreen ? 20 : 32),
                 ],
               ),

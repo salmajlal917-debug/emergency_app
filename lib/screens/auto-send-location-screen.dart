@@ -22,9 +22,6 @@ class _AutoSendLocationScreenState extends State<AutoSendLocationScreen> {
 
   final List<String> _triggerEvents = [
     'SOS Activation',
-    'Battery Below 15%',
-    'Device Shake',
-    'Voice Command',
     'No Movement (5 mins)',
   ];
 
@@ -373,12 +370,6 @@ class _AutoSendLocationScreenState extends State<AutoSendLocationScreen> {
     switch (event) {
       case 'SOS Activation':
         return 'When SOS button is pressed';
-      case 'Battery Below 15%':
-        return 'Low battery automatic alert';
-      case 'Device Shake':
-        return 'Rapid device shaking detected';
-      case 'Voice Command':
-        return 'Voice trigger "Help me"';
       case 'No Movement (5 mins)':
         return 'No movement detected for 5 minutes';
       default:
